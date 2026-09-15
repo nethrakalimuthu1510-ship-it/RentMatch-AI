@@ -1,0 +1,563 @@
+/* ============================================================
+   RentMatch AI — shared styles
+   Palette: warm terracotta & clay, cozy/homey feel
+============================================================ */
+
+:root {
+  --bg: #f5ede1;          /* warm plaster */
+  --surface: #fffaf3;      /* soft warm white */
+  --border: #e3d2bd;
+  --text: #2f2419;         /* warm near-black */
+  --muted: #8c7a64;
+
+  --terracotta: #bf5b39;   /* primary accent */
+  --terracotta-dark: #9c4529;
+  --terracotta-light: #f1ddd0;
+
+  --clay: #b1835a;         /* secondary warm accent */
+
+  --moss: #6b7d4f;         /* pass */
+  --moss-light: #e6ead9;
+  --ochre: #c08a34;        /* partial */
+  --ochre-light: #f3e4c6;
+  --brick: #96402c;        /* fail */
+  --brick-light: #ecd8d0;
+
+  --radius: 16px;
+  --radius-sm: 9px;
+  --shadow: 0 1px 3px rgba(47, 36, 25, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Work Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.55;
+}
+
+h1, h2, h3 {
+  font-family: "Fraunces", "Georgia", serif;
+  margin: 0 0 0.3em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+a {
+  color: inherit;
+}
+
+/* ---------- Layout ---------- */
+.page {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 0 20px 80px;
+}
+
+/* ---------- Top nav ---------- */
+.topnav {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.topnav-inner {
+  max-width: 920px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--terracotta);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Fraunces", serif;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.25);
+}
+
+.brand-name {
+  font-family: "Fraunces", serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.brand-tag {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.nav-links {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-links a {
+  text-decoration: none;
+  padding: 8px 4px;
+  margin: 0 8px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  border-bottom: 2px solid transparent;
+}
+
+.nav-links a.nav-active {
+  color: var(--terracotta-dark);
+  font-weight: 600;
+  border-bottom-color: var(--terracotta);
+}
+
+/* ---------- Page header ---------- */
+.page-header {
+  padding: 28px 0 6px;
+}
+
+.page-header p {
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+
+/* ---------- Requirements panel ---------- */
+.req-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin: 18px 0;
+  box-shadow: var(--shadow);
+}
+
+.req-panel summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.req-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.req-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+.req-summary-row span {
+  background: var(--terracotta-light);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.82rem;
+  color: var(--terracotta-dark);
+}
+
+.req-body {
+  padding: 4px 18px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.field label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: 0.92rem;
+  color: var(--text);
+  font-family: inherit;
+}
+
+.location-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.location-row input {
+  flex: 1 1 220px;
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--terracotta-dark);
+  white-space: nowrap;
+}
+
+.btn-secondary:hover {
+  background: var(--terracotta-light);
+}
+
+.location-status {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.location-status.is-ready {
+  color: var(--moss);
+}
+
+.location-status.is-error {
+  color: var(--brick);
+}
+
+.facility-group {
+  grid-column: 1 / -1;
+}
+
+.facility-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.facility-options label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.req-actions {
+  margin-top: 18px;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--terracotta);
+  background: var(--terracotta);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:hover {
+  background: var(--terracotta-dark);
+  border-color: var(--terracotta-dark);
+}
+
+.btn.btn-active {
+  background: var(--terracotta-light);
+  color: var(--terracotta-dark);
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0;
+}
+
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.btn-icon.btn-active {
+  border-color: var(--brick);
+  color: var(--brick);
+  background: var(--brick-light);
+}
+
+/* ---------- AI picks strip ---------- */
+.picks {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 0 18px;
+}
+
+.pick-chip {
+  flex: 0 0 auto;
+  min-width: 160px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--clay);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  text-decoration: none;
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.pick-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.pick-name {
+  display: block;
+  font-weight: 600;
+  margin-top: 2px;
+  font-family: "Fraunces", serif;
+}
+
+/* ---------- Property list & cards ---------- */
+.property-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--clay);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  box-shadow: var(--shadow);
+  scroll-margin-top: 90px;
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 4px 0 0;
+}
+
+/* Score "seal" — a stamped circle rather than a generic rounded chip */
+.score {
+  text-align: center;
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+.score-num {
+  display: block;
+  font-family: "Fraunces", serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.score-label {
+  display: block;
+  font-size: 0.6rem;
+  letter-spacing: 0.02em;
+}
+
+.score-great { background: var(--moss-light); border: 2px solid var(--moss); }
+.score-great .score-num,
+.score-great .score-label { color: var(--moss); }
+
+.score-good { background: var(--ochre-light); border: 2px solid var(--ochre); }
+.score-good .score-num,
+.score-good .score-label { color: var(--ochre); }
+
+.score-fair { background: var(--brick-light); border: 2px solid var(--brick); }
+.score-fair .score-num,
+.score-fair .score-label { color: var(--brick); }
+
+.card-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin: 12px 0 4px;
+  font-size: 0.9rem;
+}
+
+.why {
+  margin-top: 10px;
+}
+
+.why summary {
+  cursor: pointer;
+  color: var(--terracotta-dark);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.why ul {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.reason {
+  font-size: 0.86rem;
+  display: flex;
+  gap: 8px;
+}
+
+.reason span:first-child {
+  width: 16px;
+  flex: 0 0 auto;
+  font-weight: 700;
+}
+
+.reason-pass span:first-child { color: var(--moss); }
+.reason-partial span:first-child { color: var(--ochre); }
+.reason-fail span:first-child { color: var(--brick); }
+
+.info-check {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  color: var(--brick);
+  background: var(--brick-light);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+/* ---------- Compare & shortlist notes ---------- */
+.compare-note {
+  margin: 0 0 12px;
+}
+
+/* ---------- Compare page ---------- */
+.compare-grid {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.compare-grid th,
+.compare-grid td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font-size: 0.9rem;
+  vertical-align: top;
+}
+
+.compare-grid thead th {
+  background: var(--terracotta-light);
+  font-family: "Fraunces", serif;
+  color: var(--terracotta-dark);
+}
+
+.compare-grid tbody th {
+  color: var(--muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.compare-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ---------- Empty states ---------- */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  margin-top: 20px;
+}
+
+.empty-state p {
+  margin-bottom: 16px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+  .topnav-inner {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .card-top {
+    flex-direction: column;
+  }
+  .score {
+    align-self: flex-start;
+  }
+  .compare-grid {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+/* ---------- Focus visibility ---------- */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--terracotta-dark);
+  outline-offset: 2px;
+}
