@@ -6,8 +6,8 @@
 ============================================================ */
 
 /* ---------- Property data ---------- */
-/* In a real app this would come from a backend / API.
-   For this project it's a hardcoded dataset. */
+/* Properties are loaded from the backend API at startup (see Boot section).
+   This hardcoded list is only a fallback for when the server is not running. */
 const PROPERTIES = [
   {
     id: "sunny-veda",
@@ -817,7 +817,22 @@ function initShortlistPage() {
 }
 
 /* ---------- Boot ---------- */
-document.addEventListener("DOMContentLoaded", () => {
+// Address of the backend API (see README for how to start it)
+const API_URL = "http://localhost:3001";
+
+document.addEventListener("DOMContentLoaded", async () => {
+  // Load properties from the backend API. If the server is not running,
+  // the built-in PROPERTIES list defined above is used as a fallback.
+  try {
+    const response = await fetch(`${API_URL}/api/properties`);
+    if (!response.ok) throw new Error(`API responded with ${response.status}`);
+    const data = await response.json();
+    // Replace the contents of the array in place so existing code keeps working
+    PROPERTIES.splice(0, PROPERTIES.length, ...data);
+  } catch (err) {
+    console.warn("Could not load properties from the API, using built-in data:", err.message);
+  }
+
   highlightNav();
   initIndexPage();
   initComparePage();
