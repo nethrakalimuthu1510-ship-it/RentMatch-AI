@@ -171,6 +171,8 @@ const PROPERTIES = [
   }
 ];
 
+/* Every facility the app knows about. Used as the default facility
+   requirement and to build the facility checkboxes in the form. */
 const ALL_FACILITIES = ["Wi-Fi", "Washing machine", "Attached bathroom"];
 
 /* ---------- Real distance calculation ---------- */
@@ -212,6 +214,9 @@ function getDistanceAndTime(property, req) {
   return { distanceKm: property.distanceKm, travelTimeMin: property.travelTimeMin, exact: false };
 }
 
+/* Starting values for a user's requirements. getRequirements() merges any
+   saved values on top of these, so a missing field never breaks matching.
+   locationLat/locationLng stay null until the user sets an exact location. */
 const DEFAULT_REQUIREMENTS = {
   location: "",
   locationLat: null,
@@ -227,14 +232,21 @@ const DEFAULT_REQUIREMENTS = {
 };
 
 /* ---------- localStorage helpers ---------- */
+/* Requirements are saved in the browser's localStorage under this key, so
+   they persist across the Home, Compare and Shortlist pages. */
 const STORAGE_KEYS = {
   requirements: "rentmatch_requirements"
 };
 
+// True once the user has saved requirements at least once.
+// Compare and Shortlist use this to show a "set requirements first" message.
 function hasSavedRequirements() {
   return localStorage.getItem(STORAGE_KEYS.requirements) !== null;
 }
 
+// Reads saved requirements from localStorage and merges them over the defaults.
+// If the stored JSON is corrupted, the try/catch falls back to the defaults
+// instead of crashing the page.
 function getRequirements() {
   const raw = localStorage.getItem(STORAGE_KEYS.requirements);
   if (!raw) return { ...DEFAULT_REQUIREMENTS };
@@ -245,6 +257,7 @@ function getRequirements() {
   }
 }
 
+// Saves the requirements object to localStorage as a JSON string.
 function saveRequirements(req) {
   localStorage.setItem(STORAGE_KEYS.requirements, JSON.stringify(req));
 }
@@ -396,11 +409,15 @@ function computeMatch(property, req) {
   };
 }
 
+// Estimated total monthly cost shown on the Compare page: rent plus a flat
+// 950 guess for maintenance and electricity (not real billing data).
 function estMonthlyCost(property) {
   // Simple estimate: rent + a flat maintenance/electricity guess.
   return property.rent + 950;
 }
 
+// Maps a score-breakdown status to a symbol: pass = check, partial = tilde,
+// anything else (fail) = cross.
 function statusIcon(status) {
   if (status === "pass") return "\u2713";
   if (status === "partial") return "~";
@@ -408,6 +425,8 @@ function statusIcon(status) {
 }
 
 /* ---------- Nav highlighting ---------- */
+// Marks the current page's link in the navigation bar as active, by matching
+// the file name in the URL against each link's data-nav attribute.
 function highlightNav() {
   const path = location.pathname.split("/").pop() || "index.html";
   document.querySelectorAll("[data-nav]").forEach((link) => {
@@ -422,6 +441,9 @@ function highlightNav() {
 ============================================================ */
 let currentCoords = { lat: null, lng: null };
 
+// Sets up the Home page: loads saved requirements, renders the ranked list,
+// and wires up the form submit, "Edit requirements" button and location
+// buttons. Does nothing on other pages (no #property-list element).
 function initIndexPage() {
   const listEl = document.getElementById("property-list");
   if (!listEl) return; // not on this page
@@ -454,12 +476,16 @@ function initIndexPage() {
     document.getElementById("req-panel").setAttribute("open", "");
   });
 
+  // (Event handlers below: form submit, edit button, location input, lookups)
   // Typing a new place name invalidates any coordinates found earlier.
   document.getElementById("location").addEventListener("input", () => {
     currentCoords = { lat: null, lng: null };
     setLocationStatus("Click \u201cFind on map\u201d or \u201cUse my location\u201d for exact distances.", "");
   });
 
+  // "Find on map": turns the typed place name into coordinates using the free
+  // OpenStreetMap Nominatim search API. Errors (no result, no network) are
+  // shown to the user instead of crashing.
   document.getElementById("locate-address").addEventListener("click", async () => {
     const query = document.getElementById("location").value.trim();
     if (!query) {
@@ -482,6 +508,8 @@ function initIndexPage() {
     }
   });
 
+  // "Use my location": asks the browser for GPS coordinates (the user must
+  // allow it), then tries to look up a readable address for them.
   document.getElementById("use-current-location").addEventListener("click", () => {
     if (!navigator.geolocation) {
       setLocationStatus("Your browser doesn't support location access.", "error");
@@ -512,6 +540,8 @@ function initIndexPage() {
   });
 }
 
+// Shows a status message under the location field. kind is "ready" (green),
+// "error" (red) or anything else for a neutral message.
 function setLocationStatus(message, kind) {
   const el = document.getElementById("location-status");
   if (!el) return;
@@ -520,6 +550,8 @@ function setLocationStatus(message, kind) {
   el.classList.toggle("is-error", kind === "error");
 }
 
+// Copies a requirements object into the form inputs, so the form shows the
+// user's saved values when the page loads.
 function fillRequirementForm(req) {
   document.getElementById("location").value = req.location;
   if (req.locationLat != null) {
@@ -540,11 +572,14 @@ function fillRequirementForm(req) {
   });
 }
 
+// Shows a hint in the summary bar when the user has not saved requirements yet.
 function renderBlankSummary() {
   document.getElementById("req-summary").innerHTML =
     `<span>Fill in your requirements below to see matches</span>`;
 }
 
+// Clears the picks and shows an empty-state message asking the user to fill
+// in the form before any matches are displayed.
 function renderEmptyPrompt() {
   document.getElementById("ai-picks").innerHTML = "";
   document.getElementById("property-list").innerHTML = `
@@ -553,6 +588,9 @@ function renderEmptyPrompt() {
     </div>`;
 }
 
+// Reads the form inputs into a requirements object. Number fields fall back
+// to 0 (or 1 for sharing) when empty, and checked facility boxes are collected
+// into an array.
 function readRequirementForm() {
   const facilities = Array.from(
     document.querySelectorAll('input[name="facilities"]:checked')
@@ -572,6 +610,8 @@ function readRequirementForm() {
   };
 }
 
+// Renders the requirement chips at the top of the page and the
+// "Matches near ..." heading.
 function renderSummary(req) {
   const el = document.getElementById("req-summary");
   el.innerHTML = `
@@ -587,6 +627,8 @@ function renderSummary(req) {
   if (heading) heading.textContent = `Matches near ${req.location}`;
 }
 
+// Scores every property against the requirements, sorts best match first,
+// then renders the AI pick chips and the property cards.
 function renderAll(req) {
   const ranked = PROPERTIES.map((p) => ({ property: p, ...computeMatch(p, req) })).sort(
     (a, b) => b.score - a.score
@@ -595,6 +637,9 @@ function renderAll(req) {
   renderPropertyList(ranked, req);
 }
 
+// Renders the "AI picks" chips: best match, best budget (lowest rent),
+// closest, best facilities (most facilities) and lowest deposit. Each chip
+// links to that property's card on the page.
 function renderPicks(ranked, req) {
   const picksEl = document.getElementById("ai-picks");
   if (!picksEl) return;
@@ -626,6 +671,8 @@ function renderPicks(ranked, req) {
     .join("");
 }
 
+// Renders one card per ranked property: name, distance, contact, rent facts,
+// the expandable "Why this score" breakdown, and any listing warning (note).
 function renderPropertyList(ranked, req) {
   const listEl = document.getElementById("property-list");
 
@@ -670,6 +717,8 @@ function renderPropertyList(ranked, req) {
     .join("");
 }
 
+// Converts a score into a colour tier used by the CSS: 90+ great, 70+ good,
+// otherwise fair.
 function scoreTier(score) {
   if (score >= 90) return "great";
   if (score >= 70) return "good";
@@ -679,8 +728,11 @@ function scoreTier(score) {
 /* ============================================================
    COMPARE PAGE
 ============================================================ */
+// How many top matches the Compare page shows side by side.
 const COMPARE_TOP_N = 3;
 
+// Sets up the Compare page: builds a table comparing the top matches row by
+// row. Does nothing on other pages (no #compare-table element).
 function initComparePage() {
   const container = document.getElementById("compare-table");
   if (!container) return;
@@ -749,6 +801,7 @@ function initComparePage() {
   }
 }
 
+// Formats a date string like "2026-06-01" for display, e.g. "1 Jun".
 function formatDate(iso) {
   const d = new Date(iso);
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
@@ -757,10 +810,14 @@ function formatDate(iso) {
 /* ============================================================
    SHORTLIST PAGE
 ============================================================ */
+// Shortlist rules: include properties scoring at least 80%, at most 5 of them.
+// If none reach 80%, show the top 3 matches instead so the page is never empty.
 const SHORTLIST_SCORE_THRESHOLD = 80;
 const SHORTLIST_MAX = 5;
 const SHORTLIST_FALLBACK_N = 3;
 
+// Sets up the Shortlist page using the rules above. Does nothing on other
+// pages (no #shortlist-list element).
 function initShortlistPage() {
   const container = document.getElementById("shortlist-list");
   if (!container) return;
