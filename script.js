@@ -424,6 +424,34 @@ function statusIcon(status) {
   return "\u2717";
 }
 
+/* ---------- Ranking (backend API with local fallback) ---------- */
+// Ranks all properties for the given requirements, best match first.
+// It first asks the backend (POST /api/match), which scores the properties
+// with the tested matching engine in backend/matching.js. If the server is
+// unreachable or returns an error (for example 400 for invalid input), it falls
+// back to scoring in the browser so the page keeps working.
+async function getRankedProperties(req) {
+  try {
+    const response = await fetch(`${API_URL}/api/match`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req)
+    });
+    if (!response.ok) throw new Error(`API responded with ${response.status}`);
+    return await response.json();
+  } catch (err) {
+    console.warn("Matching API unavailable, scoring in the browser instead:", err.message);
+    return rankLocally(req);
+  }
+}
+
+// Fallback ranking done entirely in the browser with the local computeMatch().
+function rankLocally(req) {
+  return PROPERTIES.map((p) => ({ property: p, ...computeMatch(p, req) })).sort(
+    (a, b) => b.score - a.score
+  );
+}
+
 /* ---------- Nav highlighting ---------- */
 // Marks the current page's link in the navigation bar as active, by matching
 // the file name in the URL against each link's data-nav attribute.
@@ -627,12 +655,10 @@ function renderSummary(req) {
   if (heading) heading.textContent = `Matches near ${req.location}`;
 }
 
-// Scores every property against the requirements, sorts best match first,
+// Gets the ranked properties (from the backend API, with a local fallback),
 // then renders the AI pick chips and the property cards.
-function renderAll(req) {
-  const ranked = PROPERTIES.map((p) => ({ property: p, ...computeMatch(p, req) })).sort(
-    (a, b) => b.score - a.score
-  );
+async function renderAll(req) {
+  const ranked = await getRankedProperties(req);
   renderPicks(ranked, req);
   renderPropertyList(ranked, req);
 }
@@ -739,7 +765,7 @@ function initComparePage() {
 
   render();
 
-  function render() {
+  async function render() {
     if (!hasSavedRequirements()) {
       container.innerHTML = `
         <div class="empty-state">
@@ -750,19 +776,20 @@ function initComparePage() {
     }
 
     const req = getRequirements();
-    const ranked = PROPERTIES.map((p) => ({ property: p, ...computeMatch(p, req) })).sort(
-      (a, b) => b.score - a.score
-    );
+    const ranked = await getRankedProperties(req);
     const top = ranked.slice(0, COMPARE_TOP_N);
     const properties = top.map((r) => r.property);
+    // Look up each property's score, distance and travel time from the API result
+    const resultById = {};
+    top.forEach((r) => { resultById[r.property.id] = r; });
 
     const rows = [
-      { label: "AI Match", value: (p) => `${computeMatch(p, req).score}%` },
+      { label: "AI Match", value: (p) => `${resultById[p.id].score}%` },
       { label: "Rent", value: (p) => `\u20b9${p.rent.toLocaleString("en-IN")}/mo` },
       { label: "Deposit", value: (p) => `\u20b9${p.deposit.toLocaleString("en-IN")}` },
       { label: "Est. monthly cost", value: (p) => `\u20b9${estMonthlyCost(p).toLocaleString("en-IN")}` },
-      { label: "Distance", value: (p) => `${getDistanceAndTime(p, req).distanceKm} km` },
-      { label: "Travel time", value: (p) => `${getDistanceAndTime(p, req).travelTimeMin} min` },
+      { label: "Distance", value: (p) => `${resultById[p.id].distanceKm} km` },
+      { label: "Travel time", value: (p) => `${resultById[p.id].travelTimeMin} min` },
       { label: "Sharing", value: (p) => `${p.sharing} sharing` },
       { label: "Furnishing", value: (p) => p.furnished },
       { label: "Facilities", value: (p) => p.facilities.join(", ") || "\u2014" },
@@ -824,7 +851,7 @@ function initShortlistPage() {
 
   render();
 
-  function render() {
+  async function render() {
     if (!hasSavedRequirements()) {
       container.innerHTML = `
         <div class="empty-state">
@@ -835,9 +862,7 @@ function initShortlistPage() {
     }
 
     const req = getRequirements();
-    const ranked = PROPERTIES.map((p) => ({ property: p, ...computeMatch(p, req) })).sort(
-      (a, b) => b.score - a.score
-    );
+    const ranked = await getRankedProperties(req);
 
     let picked = ranked.filter((r) => r.score >= SHORTLIST_SCORE_THRESHOLD).slice(0, SHORTLIST_MAX);
     let note = `Properties scoring ${SHORTLIST_SCORE_THRESHOLD}% or higher, ranked by AI Match %.`;

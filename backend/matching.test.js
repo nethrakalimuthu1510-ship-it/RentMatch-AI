@@ -51,6 +51,12 @@ test("exact coordinates override the stored distance and time", () => {
   assert.strictEqual(result.travelTimeMin, 5);
 });
 
+test("result is marked exact only when coordinates were provided", () => {
+  const withCoords = { ...baseReq, locationLat: 12.97, locationLng: 77.6 };
+  assert.strictEqual(computeMatch(baseProperty, withCoords).exact, true);
+  assert.strictEqual(computeMatch(baseProperty, baseReq).exact, false);
+});
+
 test("a very poor match scores 0 and never goes negative", () => {
   const bad = {
     ...baseProperty, rent: 100000, deposit: 1000000, sharing: 3,

@@ -23,12 +23,13 @@ function estimateTravelTimeMin(distanceKm) {
 
 // Uses real computed values if the user gave exact coordinates,
 // otherwise falls back to the values stored for the property.
+// "exact" tells the frontend whether the figures are real or approximate.
 function getDistanceAndTime(property, req) {
   if (req.locationLat != null && req.locationLng != null) {
     const km = haversineDistanceKm(req.locationLat, req.locationLng, property.lat, property.lng);
-    return { distanceKm: Math.round(km * 10) / 10, travelTimeMin: estimateTravelTimeMin(km) };
+    return { distanceKm: Math.round(km * 10) / 10, travelTimeMin: estimateTravelTimeMin(km), exact: true };
   }
-  return { distanceKm: property.distanceKm, travelTimeMin: property.travelTimeMin };
+  return { distanceKm: property.distanceKm, travelTimeMin: property.travelTimeMin, exact: false };
 }
 
 // Scores one property (0-100) against the user's requirements
@@ -36,7 +37,7 @@ function getDistanceAndTime(property, req) {
 function computeMatch(property, req) {
   const breakdown = [];
   let score = 0;
-  const { distanceKm, travelTimeMin } = getDistanceAndTime(property, req);
+  const { distanceKm, travelTimeMin, exact } = getDistanceAndTime(property, req);
 
   // Budget (25): full marks if within budget, partial if up to 15% over
   let budgetPts = 0, budgetStatus = "fail";
@@ -120,7 +121,8 @@ function computeMatch(property, req) {
     score: Math.max(0, Math.min(100, Math.round(score))),
     breakdown,
     distanceKm,
-    travelTimeMin
+    travelTimeMin,
+    exact
   };
 }
 
