@@ -112,7 +112,7 @@ function getDistanceAndTime(property, req) {
                 travelTimeMin: estimateTravelTimeMin(km),
                 distanceMethod: "straight-line",
                 travelTimeMethod: "estimated",
-                exact: false
+                exact: true
             };
         }
     }
@@ -226,15 +226,12 @@ function computeMatch(property, req) {
                 (actual - limit) / limit
             );
 
-            const points =
-                actual <= limit
-                    ? weight
-                    : overRatio <= 0.15
-                        ? weight * 0.6
-                        : Math.max(
-                            0,
-                            weight * (1 - overRatio)
-                        );
+    const points =
+    actual <= limit
+        ? weight
+        : overRatio <= 0.15
+            ? weight * 0.6
+            : 0;
 
             return {
                 points,
@@ -550,7 +547,7 @@ function computeMatch(property, req) {
         travelTimeMin: location.travelTimeMin,
         distanceMethod: location.distanceMethod,
         travelTimeMethod: location.travelTimeMethod,
-        exact: false
+        exact: location.exact
     };
 }
 
