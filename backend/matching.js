@@ -1,129 +1,564 @@
-// matching.js - scoring logic for RentMatch AI.
-// Weights: Budget 25, Distance 20, Travel time 15, Deposit 15,
-// Facilities 15, Furnishing 5, Sharing 5 = 100
+// RentMatch AI - Shared Matching Engine
+// Scores are normalized using verified listing information.
+// Confidence shows how much of the requested criteria could be evaluated.
 
-const ALL_FACILITIES = ["Wi-Fi", "Washing machine", "Attached bathroom"];
+const WEIGHTS = {
+    budget: 25,
+    distance: 20,
+    travelTime: 15,
+    deposit: 15,
+    facilities: 15,
+    furnishing: 5,
+    sharing: 5
+};
 
-// Straight-line distance in km between two lat/lng points (Haversine formula)
+const ALL_FACILITIES = [
+    "Wi-Fi",
+    "Washing machine",
+    "Attached bathroom"
+];
+
+function numberOrNull(value) {
+    if (value === null || value === undefined || value === "") {
+        return null;
+    }
+
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+}
+
+function positiveNumberOrNull(value) {
+    const n = numberOrNull(value);
+    return n !== null && n > 0 ? n : null;
+}
+
+function nonNegativeNumberOrNull(value) {
+    const n = numberOrNull(value);
+    return n !== null && n >= 0 ? n : null;
+}
+
+function validCoordinates(lat, lng) {
+    const a = numberOrNull(lat);
+    const b = numberOrNull(lng);
+
+    if (a === null || b === null) return false;
+    if (a < -90 || a > 90 || b < -180 || b > 180) {
+        return false;
+    }
+
+    // Reject placeholder coordinates.
+    if (a === 0 && b === 0) return false;
+
+    return true;
+}
+
 function haversineDistanceKm(lat1, lng1, lat2, lng2) {
-  const toRad = (deg) => (deg * Math.PI) / 180;
-  const R = 6371; // Earth's radius in km
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    if (
+        !validCoordinates(lat1, lng1) ||
+        !validCoordinates(lat2, lng2)
+    ) {
+        return null;
+    }
+
+    const toRad = deg => deg * Math.PI / 180;
+    const earthRadiusKm = 6371;
+
+    const dLat = toRad(Number(lat2) - Number(lat1));
+    const dLng = toRad(Number(lng2) - Number(lng1));
+
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(Number(lat1))) *
+        Math.cos(toRad(Number(lat2))) *
+        Math.sin(dLng / 2) ** 2;
+
+    return earthRadiusKm *
+        2 *
+        Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Rough travel time: ~18 km/h city speed plus 4 minutes fixed overhead
+// This is an estimate, not an actual route or live-traffic calculation.
 function estimateTravelTimeMin(distanceKm) {
-  return Math.max(5, Math.round((distanceKm / 18) * 60 + 4));
+    const km = positiveNumberOrNull(distanceKm);
+
+    if (km === null && Number(distanceKm) !== 0) {
+        return null;
+    }
+
+    return Math.max(
+        5,
+        Math.round((Number(distanceKm) / 18) * 60 + 4)
+    );
 }
 
-// Uses real computed values if the user gave exact coordinates,
-// otherwise falls back to the values stored for the property.
-// "exact" tells the frontend whether the figures are real or approximate.
 function getDistanceAndTime(property, req) {
-  if (req.locationLat != null && req.locationLng != null) {
-    const km = haversineDistanceKm(req.locationLat, req.locationLng, property.lat, property.lng);
-    return { distanceKm: Math.round(km * 10) / 10, travelTimeMin: estimateTravelTimeMin(km), exact: true };
-  }
-  return { distanceKm: property.distanceKm, travelTimeMin: property.travelTimeMin, exact: false };
+    const propertyLat = property.latitude ?? property.lat;
+    const propertyLng = property.longitude ?? property.lng;
+
+    if (
+        validCoordinates(req.locationLat, req.locationLng) &&
+        validCoordinates(propertyLat, propertyLng)
+    ) {
+        const km = haversineDistanceKm(
+            req.locationLat,
+            req.locationLng,
+            propertyLat,
+            propertyLng
+        );
+
+        if (km !== null) {
+            return {
+                distanceKm: Math.round(km * 10) / 10,
+                travelTimeMin: estimateTravelTimeMin(km),
+                distanceMethod: "straight-line",
+                travelTimeMethod: "estimated",
+                exact: false
+            };
+        }
+    }
+
+    const storedDistance =
+        nonNegativeNumberOrNull(property.distanceKm);
+
+    const storedTime =
+        positiveNumberOrNull(property.travelTimeMin);
+
+    return {
+        distanceKm: storedDistance,
+        travelTimeMin: storedTime,
+        distanceMethod:
+            storedDistance !== null ? "stored-estimate" : null,
+        travelTimeMethod:
+            storedTime !== null ? "stored-estimate" : null,
+        exact: false
+    };
 }
 
-// Scores one property (0-100) against the user's requirements
-// and returns a per-criterion breakdown explaining the score.
-function computeMatch(property, req) {
-  const breakdown = [];
-  let score = 0;
-  const { distanceKm, travelTimeMin, exact } = getDistanceAndTime(property, req);
-
-  // Budget (25): full marks if within budget, partial if up to 15% over
-  let budgetPts = 0, budgetStatus = "fail";
-  if (property.rent <= req.budget) {
-    budgetPts = 25; budgetStatus = "pass";
-  } else {
-    const overPct = (property.rent - req.budget) / req.budget;
-    if (overPct <= 0.15) { budgetPts = 15; budgetStatus = "partial"; }
-    else { budgetPts = Math.max(0, 25 - Math.round(overPct * 60)); }
-  }
-  score += budgetPts;
-  breakdown.push({ label: "Budget", status: budgetStatus,
-    text: `\u20b9${property.rent} vs your \u20b9${req.budget} budget` });
-
-  // Distance (20): partial if within 1 km over the limit
-  let distPts = 0, distStatus = "fail";
-  if (distanceKm <= req.maxDistance) {
-    distPts = 20; distStatus = "pass";
-  } else {
-    const overKm = distanceKm - req.maxDistance;
-    if (overKm <= 1) { distPts = 12; distStatus = "partial"; }
-    else { distPts = Math.max(0, 20 - Math.round(overKm * 8)); }
-  }
-  score += distPts;
-  breakdown.push({ label: "Distance", status: distStatus,
-    text: `${distanceKm} km vs your ${req.maxDistance} km limit` });
-
-  // Travel time (15): partial if within 5 minutes over the limit
-  let timePts = 0, timeStatus = "fail";
-  if (travelTimeMin <= req.maxTravelTime) {
-    timePts = 15; timeStatus = "pass";
-  } else {
-    const overMin = travelTimeMin - req.maxTravelTime;
-    if (overMin <= 5) { timePts = 9; timeStatus = "partial"; }
-    else { timePts = Math.max(0, 15 - Math.round(overMin * 0.6)); }
-  }
-  score += timePts;
-  breakdown.push({ label: "Travel time", status: timeStatus,
-    text: `${travelTimeMin} min to ${req.location}` });
-
-  // Deposit (15): partial if up to 15% over the limit
-  let depPts = 0, depStatus = "fail";
-  if (property.deposit <= req.maxDeposit) {
-    depPts = 15; depStatus = "pass";
-  } else {
-    const overPct = (property.deposit - req.maxDeposit) / req.maxDeposit;
-    if (overPct <= 0.15) { depPts = 9; depStatus = "partial"; }
-    else { depPts = Math.max(0, 15 - Math.round(overPct * 40)); }
-  }
-  score += depPts;
-  breakdown.push({ label: "Deposit", status: depStatus,
-    text: `\u20b9${property.deposit} vs your \u20b9${req.maxDeposit} limit` });
-
-  // Facilities (15): proportional to how many required facilities exist
-  const wanted = req.facilities && req.facilities.length ? req.facilities : ALL_FACILITIES;
-  const matched = wanted.filter((f) => property.facilities.includes(f));
-  score += Math.round((matched.length / wanted.length) * 15);
-  breakdown.push({
-    label: "Facilities",
-    status: matched.length === wanted.length ? "pass" : matched.length > 0 ? "partial" : "fail",
-    text: `${matched.length} of ${wanted.length} required facilities available`
-  });
-
-  // Furnishing (5): exact match only
-  const furnMatch = property.furnished === req.furnished;
-  score += furnMatch ? 5 : 0;
-  breakdown.push({ label: "Furnishing", status: furnMatch ? "pass" : "fail",
-    text: `${property.furnished} vs preferred ${req.furnished}` });
-
-  // Sharing (5): full marks for exact match, 2 points if off by one
-  const sharingDiff = Math.abs(property.sharing - req.sharing);
-  const sharingPts = sharingDiff === 0 ? 5 : sharingDiff === 1 ? 2 : 0;
-  score += sharingPts;
-  breakdown.push({
-    label: "Sharing",
-    status: sharingDiff === 0 ? "pass" : sharingDiff === 1 ? "partial" : "fail",
-    text: `${property.sharing} sharing vs your preference of ${req.sharing}`
-  });
-
-  return {
-    score: Math.max(0, Math.min(100, Math.round(score))),
+function addBreakdown(
     breakdown,
-    distanceKm,
-    travelTimeMin,
-    exact
-  };
+    label,
+    status,
+    text,
+    points,
+    weight
+) {
+    breakdown.push({
+        label,
+        status,
+        text,
+        points:
+            points === null
+                ? null
+                : Math.round(points * 100) / 100,
+        weight
+    });
 }
 
-module.exports = { haversineDistanceKm, estimateTravelTimeMin, getDistanceAndTime, computeMatch };
+function computeMatch(property, req) {
+    const breakdown = [];
+
+    let earnedPoints = 0;
+    let availableWeight = 0;
+    let requestedWeight = 0;
+
+    const addCriterion = (
+        key,
+        label,
+        actual,
+        limit,
+        scorer,
+        explanation
+    ) => {
+        const weight = WEIGHTS[key];
+
+        requestedWeight += weight;
+
+        if (
+            actual === null ||
+            actual === undefined ||
+            limit === null ||
+            limit === undefined ||
+            (typeof actual === "number" &&
+                !Number.isFinite(actual)) ||
+            (typeof limit === "number" &&
+                !Number.isFinite(limit))
+        ) {
+            addBreakdown(
+                breakdown,
+                label,
+                "unknown",
+                explanation ||
+                    "Not enough verified information to evaluate.",
+                null,
+                weight
+            );
+
+            return;
+        }
+
+        const result = scorer(actual, limit, weight);
+
+        availableWeight += weight;
+        earnedPoints += result.points;
+
+        addBreakdown(
+            breakdown,
+            label,
+            result.status,
+            result.text || explanation,
+            result.points,
+            weight
+        );
+    };
+
+    // 1. Budget
+    const rent = positiveNumberOrNull(property.rent);
+    const budget = positiveNumberOrNull(req.budget);
+
+    addCriterion(
+        "budget",
+        "Budget",
+        rent,
+        budget,
+        (actual, limit, weight) => {
+            const overRatio = Math.max(
+                0,
+                (actual - limit) / limit
+            );
+
+            const points =
+                actual <= limit
+                    ? weight
+                    : overRatio <= 0.15
+                        ? weight * 0.6
+                        : Math.max(
+                            0,
+                            weight * (1 - overRatio)
+                        );
+
+            return {
+                points,
+                status:
+                    actual <= limit
+                        ? "pass"
+                        : points > 0
+                            ? "partial"
+                            : "fail",
+                text:
+                    `₹${actual.toLocaleString("en-IN")} ` +
+                    `vs your ₹${limit.toLocaleString("en-IN")} budget`
+            };
+        }
+    );
+
+    const location = getDistanceAndTime(property, req);
+
+    // 2. Distance
+    addCriterion(
+        "distance",
+        "Distance",
+        nonNegativeNumberOrNull(location.distanceKm),
+        positiveNumberOrNull(req.maxDistance),
+        (actual, limit, weight) => {
+            const over = actual - limit;
+
+            const points =
+                actual <= limit
+                    ? weight
+                    : over <= 1
+                        ? weight * 0.6
+                        : Math.max(
+                            0,
+                            weight * (
+                                1 - (over - 1) / Math.max(limit, 1)
+                            )
+                        );
+
+            return {
+                points,
+                status:
+                    actual <= limit
+                        ? "pass"
+                        : points > 0
+                            ? "partial"
+                            : "fail",
+                text:
+                    `${actual.toFixed(1)} km vs your ${limit} km limit ` +
+                    `(${location.distanceMethod === "straight-line"
+                        ? "straight-line distance"
+                        : "stored distance"})`
+            };
+        }
+    );
+
+    // 3. Travel time
+    addCriterion(
+        "travelTime",
+        "Travel time",
+        positiveNumberOrNull(location.travelTimeMin),
+        positiveNumberOrNull(req.maxTravelTime),
+        (actual, limit, weight) => {
+            const over = actual - limit;
+
+            const points =
+                actual <= limit
+                    ? weight
+                    : over <= 5
+                        ? weight * 0.6
+                        : Math.max(
+                            0,
+                            weight * (
+                                1 - (over - 5) / Math.max(limit, 1)
+                            )
+                        );
+
+            return {
+                points,
+                status:
+                    actual <= limit
+                        ? "pass"
+                        : points > 0
+                            ? "partial"
+                            : "fail",
+                text:
+                    `${actual} min vs your ${limit} min limit ` +
+                    "(estimated; not live traffic)"
+            };
+        }
+    );
+
+    // 4. Deposit
+    const deposit =
+        nonNegativeNumberOrNull(property.deposit);
+
+    const maxDeposit =
+        positiveNumberOrNull(req.maxDeposit);
+
+    addCriterion(
+        "deposit",
+        "Deposit",
+        deposit,
+        maxDeposit,
+        (actual, limit, weight) => {
+            const overRatio = Math.max(
+                0,
+                (actual - limit) / limit
+            );
+
+            const points =
+                actual <= limit
+                    ? weight
+                    : overRatio <= 0.15
+                        ? weight * 0.6
+                        : Math.max(
+                            0,
+                            weight * (1 - overRatio)
+                        );
+
+            return {
+                points,
+                status:
+                    actual <= limit
+                        ? "pass"
+                        : points > 0
+                            ? "partial"
+                            : "fail",
+                text:
+                    `₹${actual.toLocaleString("en-IN")} vs your ` +
+                    `₹${limit.toLocaleString("en-IN")} deposit limit`
+            };
+        }
+    );
+
+    // 5. Facilities
+    // Score only when the user selected facilities
+    // and listing amenities are explicitly known.
+    const wantedFacilities =
+        Array.isArray(req.facilities)
+            ? req.facilities
+            : [];
+
+    if (wantedFacilities.length > 0) {
+        requestedWeight += WEIGHTS.facilities;
+
+        const facilitiesKnown =
+            property.facilitiesKnown === true ||
+            (
+                Array.isArray(property.facilities) &&
+                property.facilities.length > 0
+            );
+
+        if (!facilitiesKnown) {
+            addBreakdown(
+                breakdown,
+                "Facilities",
+                "unknown",
+                "Facilities are not confirmed in this listing.",
+                null,
+                WEIGHTS.facilities
+            );
+        } else {
+            const available =
+                Array.isArray(property.facilities)
+                    ? property.facilities
+                    : [];
+
+            const matched = wantedFacilities.filter(
+                item => available.includes(item)
+            );
+
+            const points =
+                matched.length /
+                wantedFacilities.length *
+                WEIGHTS.facilities;
+
+            availableWeight += WEIGHTS.facilities;
+            earnedPoints += points;
+
+            addBreakdown(
+                breakdown,
+                "Facilities",
+                matched.length === wantedFacilities.length
+                    ? "pass"
+                    : matched.length > 0
+                        ? "partial"
+                        : "fail",
+                `${matched.length} of ${wantedFacilities.length} ` +
+                    "requested facilities confirmed",
+                points,
+                WEIGHTS.facilities
+            );
+        }
+    }
+
+    // 6. Furnishing
+    const furnishing =
+        typeof property.furnished === "string"
+            ? property.furnished.trim()
+            : "";
+
+    const wantedFurnishing =
+        typeof req.furnished === "string"
+            ? req.furnished.trim()
+            : "";
+
+    requestedWeight += WEIGHTS.furnishing;
+
+    if (
+        !furnishing ||
+        /^unknown$/i.test(furnishing) ||
+        !wantedFurnishing
+    ) {
+        addBreakdown(
+            breakdown,
+            "Furnishing",
+            "unknown",
+            "Furnishing is not confirmed in this listing.",
+            null,
+            WEIGHTS.furnishing
+        );
+    } else {
+        const match =
+            furnishing.toLowerCase() ===
+            wantedFurnishing.toLowerCase();
+
+        availableWeight += WEIGHTS.furnishing;
+
+        if (match) {
+            earnedPoints += WEIGHTS.furnishing;
+        }
+
+        addBreakdown(
+            breakdown,
+            "Furnishing",
+            match ? "pass" : "fail",
+            `${furnishing} vs preferred ${wantedFurnishing}`,
+            match ? WEIGHTS.furnishing : 0,
+            WEIGHTS.furnishing
+        );
+    }
+
+    // 7. Sharing
+    // Bedroom count is NOT assumed to mean sharing capacity.
+    const sharing =
+        positiveNumberOrNull(property.sharing);
+
+    const wantedSharing =
+        positiveNumberOrNull(req.sharing);
+
+    requestedWeight += WEIGHTS.sharing;
+
+    if (sharing === null || wantedSharing === null) {
+        addBreakdown(
+            breakdown,
+            "Sharing",
+            "unknown",
+            "Sharing capacity is not confirmed in this listing.",
+            null,
+            WEIGHTS.sharing
+        );
+    } else {
+        const diff = Math.abs(sharing - wantedSharing);
+
+        const points =
+            diff === 0
+                ? WEIGHTS.sharing
+                : diff === 1
+                    ? WEIGHTS.sharing * 0.4
+                    : 0;
+
+        availableWeight += WEIGHTS.sharing;
+        earnedPoints += points;
+
+        addBreakdown(
+            breakdown,
+            "Sharing",
+            diff === 0
+                ? "pass"
+                : diff === 1
+                    ? "partial"
+                    : "fail",
+            `${sharing} sharing vs your preference of ${wantedSharing}`,
+            points,
+            WEIGHTS.sharing
+        );
+    }
+
+    // Normalize score using only criteria with verified information.
+    const score =
+        availableWeight > 0
+            ? Math.round(
+                (earnedPoints / availableWeight) * 100
+            )
+            : 0;
+
+    // Confidence shows how much requested information was available.
+    const confidence =
+        requestedWeight > 0
+            ? Math.round(
+                (availableWeight / requestedWeight) * 100
+            )
+            : 0;
+
+    return {
+        score: Math.max(0, Math.min(100, score)),
+        confidence,
+        availableWeight,
+        requestedWeight,
+        breakdown,
+        distanceKm: location.distanceKm,
+        travelTimeMin: location.travelTimeMin,
+        distanceMethod: location.distanceMethod,
+        travelTimeMethod: location.travelTimeMethod,
+        exact: false
+    };
+}
+
+module.exports = {
+    WEIGHTS,
+    ALL_FACILITIES,
+    haversineDistanceKm,
+    estimateTravelTimeMin,
+    getDistanceAndTime,
+    computeMatch
+};

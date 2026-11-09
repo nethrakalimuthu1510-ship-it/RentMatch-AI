@@ -1,9 +1,11 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RentMatch AI — Matches</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
@@ -19,101 +21,265 @@
           <span class="brand-tag">Smart rental matching</span>
         </span>
       </a>
-      <nav class="nav-links">
-        <a href="index.html" data-nav="index.html">Home</a>
-        <a href="compare.html" data-nav="compare.html">Compare</a>
-        <a href="shortlist.html" data-nav="shortlist.html">Shortlist</a>
-      </nav>
-    </div>
+
+
+  <nav class="nav-links">
+    <a href="index.html" data-nav="index.html">Home</a>
+    <a href="compare.html" data-nav="compare.html">Compare</a>
+    <a href="shortlist.html" data-nav="shortlist.html">Shortlist</a>
+  </nav>
+</div>
+
+
   </header>
 
   <main class="page">
-    <div class="page-header">
-      <h1 id="area-heading">Your matches</h1>
-      <p>Ranked by your priorities &middot; <span id="result-count">8</span> properties analysed by the matching engine</p>
+
+
+<div class="page-header">
+  <h1 id="area-heading">Your matches</h1>
+  <p>
+    Ranked by your priorities ·
+    <span id="result-count">8</span>
+    properties analysed by the matching engine
+  </p>
+</div>
+
+<details class="req-panel" id="req-panel" open>
+  <summary>
+    <div class="req-summary-row" id="req-summary"></div>
+    <button type="button" class="btn" id="edit-requirements">
+      Edit requirements
+    </button>
+  </summary>
+
+  <form class="req-body" id="requirements-form">
+
+    <div class="field-grid">
+
+      <!-- COUNTRY -->
+      <div class="field">
+        <label for="country">Country</label>
+        <select id="country" required>
+          <option value="India" selected>India</option>
+        </select>
+      </div>
+
+      <!-- STATE -->
+      <div class="field">
+        <label for="state">State</label>
+        <select id="state" required>
+          <option value="Tamil Nadu" selected>Tamil Nadu</option>
+        </select>
+      </div>
+
+      <!-- DISTRICT -->
+      <div class="field">
+        <label for="district">District</label>
+        <select id="district" required>
+          <option value="">Select district</option>
+          <option value="Ariyalur">Ariyalur</option>
+          <option value="Chengalpattu">Chengalpattu</option>
+          <option value="Chennai">Chennai</option>
+          <option value="Coimbatore">Coimbatore</option>
+          <option value="Cuddalore">Cuddalore</option>
+          <option value="Dharmapuri">Dharmapuri</option>
+          <option value="Dindigul">Dindigul</option>
+          <option value="Erode">Erode</option>
+          <option value="Kallakurichi">Kallakurichi</option>
+          <option value="Kancheepuram">Kancheepuram</option>
+          <option value="Kanniyakumari">Kanniyakumari</option>
+          <option value="Karur">Karur</option>
+          <option value="Krishnagiri">Krishnagiri</option>
+          <option value="Madurai">Madurai</option>
+          <option value="Mayiladuthurai">Mayiladuthurai</option>
+          <option value="Nagapattinam">Nagapattinam</option>
+          <option value="Namakkal">Namakkal</option>
+          <option value="Nilgiris">Nilgiris</option>
+          <option value="Perambalur">Perambalur</option>
+          <option value="Pudukkottai">Pudukkottai</option>
+          <option value="Ramanathapuram">Ramanathapuram</option>
+          <option value="Ranipet">Ranipet</option>
+          <option value="Salem">Salem</option>
+          <option value="Sivaganga">Sivaganga</option>
+          <option value="Tenkasi">Tenkasi</option>
+          <option value="Thanjavur">Thanjavur</option>
+          <option value="Theni">Theni</option>
+          <option value="Thoothukudi">Thoothukudi</option>
+          <option value="Tiruchirappalli">Tiruchirappalli</option>
+          <option value="Tirunelveli">Tirunelveli</option>
+          <option value="Tirupathur">Tirupathur</option>
+          <option value="Tiruppur">Tiruppur</option>
+          <option value="Tiruvallur">Tiruvallur</option>
+          <option value="Tiruvannamalai">Tiruvannamalai</option>
+          <option value="Tiruvarur">Tiruvarur</option>
+          <option value="Vellore">Vellore</option>
+          <option value="Viluppuram">Viluppuram</option>
+          <option value="Virudhunagar">Virudhunagar</option>
+        </select>
+      </div>
+
+      <!-- LOCALITY -->
+      <div class="field facility-group">
+        <label for="location">
+          Area / Town / Village / Locality
+        </label>
+
+        <div class="location-row">
+          <input
+            type="text"
+            id="location"
+            placeholder="Example: Eachanari, Gandhipuram, Pollachi"
+            required
+          />
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            id="locate-address"
+          >
+            Find on map
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            id="use-current-location"
+          >
+            📍 Use my location
+          </button>
+        </div>
+
+        <p class="location-status" id="location-status">
+          Select your district and enter your preferred locality.
+        </p>
+      </div>
+
+      <!-- BUDGET -->
+      <div class="field">
+        <label for="budget">Budget (₹/mo)</label>
+        <input
+          type="number"
+          id="budget"
+          min="0"
+          step="100"
+          placeholder="e.g. 8000"
+          required
+        />
+      </div>
+
+      <!-- DISTANCE -->
+      <div class="field">
+        <label for="maxDistance">Max distance (km)</label>
+        <input
+          type="number"
+          id="maxDistance"
+          min="0"
+          step="0.1"
+          placeholder="e.g. 15"
+          required
+        />
+      </div>
+
+      <!-- TRAVEL TIME -->
+      <div class="field">
+        <label for="maxTravelTime">Max travel time (min)</label>
+        <input
+          type="number"
+          id="maxTravelTime"
+          min="0"
+          step="1"
+          placeholder="e.g. 25"
+          required
+        />
+      </div>
+
+      <!-- DEPOSIT -->
+      <div class="field">
+        <label for="maxDeposit">Max deposit (₹)</label>
+        <input
+          type="number"
+          id="maxDeposit"
+          min="0"
+          step="500"
+          placeholder="e.g. 25000"
+          required
+        />
+      </div>
+
+      <!-- SHARING -->
+      <div class="field">
+        <label for="sharing">Preferred sharing</label>
+        <select id="sharing" required>
+          <option value="" disabled selected>Select...</option>
+          <option value="1">1 sharing</option>
+          <option value="2">2 sharing</option>
+          <option value="3">3 sharing</option>
+        </select>
+      </div>
+
+      <!-- FURNISHING -->
+      <div class="field">
+        <label for="furnished">Furnishing</label>
+        <select id="furnished" required>
+          <option value="" disabled selected>Select...</option>
+          <option value="Furnished">Furnished</option>
+          <option value="Semi-furnished">Semi-furnished</option>
+          <option value="Unfurnished">Unfurnished</option>
+        </select>
+      </div>
+
+      <!-- FOOD POLICY -->
+      <div class="field">
+        <label for="foodPolicy">Food policy</label>
+        <select id="foodPolicy" required>
+          <option value="" disabled selected>Select...</option>
+          <option value="Any">Any</option>
+          <option value="Veg only">Veg only</option>
+        </select>
+      </div>
+
+      <!-- FACILITIES -->
+      <div class="field facility-group">
+        <label>Required facilities</label>
+
+        <div class="facility-options">
+          <label>
+            <input type="checkbox" name="facilities" value="Wi-Fi" />
+            Wi-Fi
+          </label>
+
+          <label>
+            <input type="checkbox" name="facilities" value="Washing machine" />
+            Washing machine
+          </label>
+
+          <label>
+            <input type="checkbox" name="facilities" value="Attached bathroom" />
+            Attached bathroom
+          </label>
+        </div>
+      </div>
+
     </div>
 
-    <details class="req-panel" id="req-panel" open>
-      <summary>
-        <div class="req-summary-row" id="req-summary"></div>
-        <button type="button" class="btn" id="edit-requirements">Edit requirements</button>
-      </summary>
+    <div class="req-actions">
+      <button type="submit" class="btn">
+        Save requirements
+      </button>
+    </div>
 
-      <form class="req-body" id="requirements-form">
-        <div class="field-grid">
-          <div class="field facility-group">
-            <label for="location">Your location / college (matches are ranked relative to this)</label>
-            <div class="location-row">
-              <input type="text" id="location" placeholder="e.g. MG Road, near St. Joseph's College" required />
-              <button type="button" class="btn btn-secondary" id="locate-address">Find on map</button>
-              <button type="button" class="btn btn-secondary" id="use-current-location">📍 Use my location</button>
-            </div>
-            <p class="location-status" id="location-status"></p>
-          </div>
-          <div class="field">
-            <label for="budget">Budget (₹/mo)</label>
-            <input type="number" id="budget" min="0" step="100" placeholder="e.g. 8000" required />
-          </div>
-          <div class="field">
-            <label for="maxDistance">Max distance (km)</label>
-            <input type="number" id="maxDistance" min="0" step="0.1" placeholder="e.g. 3" required />
-          </div>
-          <div class="field">
-            <label for="maxTravelTime">Max travel time (min)</label>
-            <input type="number" id="maxTravelTime" min="0" step="1" placeholder="e.g. 25" required />
-          </div>
-          <div class="field">
-            <label for="maxDeposit">Max deposit (₹)</label>
-            <input type="number" id="maxDeposit" min="0" step="500" placeholder="e.g. 25000" required />
-          </div>
-          <div class="field">
-            <label for="sharing">Preferred sharing</label>
-            <select id="sharing" required>
-              <option value="" disabled selected>Select...</option>
-              <option value="1">1 sharing</option>
-              <option value="2">2 sharing</option>
-              <option value="3">3 sharing</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="furnished">Furnishing</label>
-            <select id="furnished" required>
-              <option value="" disabled selected>Select...</option>
-              <option value="Furnished">Furnished</option>
-              <option value="Semi-furnished">Semi-furnished</option>
-              <option value="Unfurnished">Unfurnished</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="foodPolicy">Food policy</label>
-            <select id="foodPolicy" required>
-              <option value="" disabled selected>Select...</option>
-              <option value="Any">Any</option>
-              <option value="Veg only">Veg only</option>
-            </select>
-          </div>
+  </form>
+</details>
 
-          <div class="field facility-group">
-            <label>Required facilities</label>
-            <div class="facility-options">
-              <label><input type="checkbox" name="facilities" value="Wi-Fi" /> Wi-Fi</label>
-              <label><input type="checkbox" name="facilities" value="Washing machine" /> Washing machine</label>
-              <label><input type="checkbox" name="facilities" value="Attached bathroom" /> Attached bathroom</label>
-            </div>
-          </div>
-        </div>
+<div class="picks" id="ai-picks"></div>
 
-        <div class="req-actions">
-          <button type="submit" class="btn">Save requirements</button>
-        </div>
-      </form>
-    </details>
+<div class="property-list" id="property-list"></div>
 
-    <div class="picks" id="ai-picks"></div>
 
-    <div class="property-list" id="property-list"></div>
   </main>
 
   <script src="script.js"></script>
+
 </body>
 </html>
