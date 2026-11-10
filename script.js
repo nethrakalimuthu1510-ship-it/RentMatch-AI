@@ -253,17 +253,13 @@ function getSavedRequirements() {
         }
         : { ...DEFAULT_REQUIREMENTS };
 }
-
 function saveRequirements(req) {
     writeStorage(STORAGE_KEYS.requirements, req);
 }
 
 /*
-   Properties saved by an older version of this app have no
-   matchScore / confidence / criteria. Showing them directly
-   prints "undefined%". Every list read from storage is passed
-   through this check, and any property without a valid score
-   is scored again with the current engine.
+   Recalculate scores for older saved properties
+   that do not contain valid matching information.
 */
 
 function hasValidScore(property) {
@@ -289,9 +285,9 @@ function ensureScoredList(items) {
 
     const req = getSavedRequirements();
 
-  return objects.map(item =>
-    computeLiveMatch(item, req)
-);
+    return objects.map(item =>
+        computeLiveMatch(item, req)
+    );
 }
 
 function getSavedLiveResults() {
@@ -300,7 +296,11 @@ function getSavedLiveResults() {
         []
     );
 
-    return ensureScoredList(results);
+    const scoredResults = ensureScoredList(results);
+
+    saveLiveResults(scoredResults);
+
+    return scoredResults;
 }
 
 function saveLiveResults(properties) {
@@ -313,7 +313,11 @@ function getShortlist() {
         []
     );
 
-    return ensureScoredList(items);
+    const scoredItems = ensureScoredList(items);
+
+    saveShortlist(scoredItems);
+
+    return scoredItems;
 }
 
 function saveShortlist(items) {
@@ -2104,7 +2108,7 @@ function readRequirementsFromForm() {
         getElement("furnished")?.value || "Any";
 
     const food =
-        getElement("food")?.value || "Any";
+        getElement("foodPolicy", "food")?.value || "Any";
 
     const facilities = Array.from(
         document.querySelectorAll(
@@ -2211,6 +2215,17 @@ function setLoading(isLoading, message = "Searching live rental properties...") 
     if (loading) {
         loading.textContent = isLoading ? message : "";
         loading.style.display = isLoading ? "block" : "none";
+    }
+
+    const formButton = document.querySelector(
+        '#requirements-form button[type="submit"]'
+    );
+
+    if (formButton) {
+        formButton.disabled = isLoading;
+        formButton.textContent = isLoading
+            ? "Searching..."
+            : "Save requirements";
     }
 }
 
@@ -2627,7 +2642,8 @@ function renderPropertyCard(property) {
 function renderResultsSummary(properties) {
     const container = getElement(
         "results-summary",
-        "search-summary"
+        "search-summary",
+        "ai-picks"
     );
 
     if (!container) return;
@@ -2761,6 +2777,11 @@ async function searchLiveProperties(event) {
         return;
     }
 
+    // Save exactly what the user typed straight away, so a failed
+    // search or a page reload can never replace it.
+    saveRequirements(req);
+    renderRequirementsSummary(req);
+
     setLoading(true);
 
     try {
@@ -2787,6 +2808,8 @@ async function searchLiveProperties(event) {
 
         renderProperties(rankedProperties);
 
+        updateResultsHeader(req, rankedProperties.length);
+
         setLocationStatus(
             `Found ${rankedProperties.length} live rental properties.`,
             "success"
@@ -2812,11 +2835,85 @@ async function searchLiveProperties(event) {
 
 
 /* ============================================================
+   37B. REQUIREMENTS SUMMARY AND RESULTS HEADER
+   ============================================================ */
+
+function renderRequirementsSummary(req) {
+    const container = getElement("req-summary");
+
+    if (!container) return;
+
+    if (!req || !req.location) {
+        container.innerHTML = "";
+        return;
+    }
+
+    const chips = [
+        req.location + (req.district ? ", " + req.district : ""),
+
+        req.budget
+            ? "Budget " + formatINR(req.budget)
+            : null,
+
+        req.maxDistance
+            ? "Within " + req.maxDistance + " km"
+            : null,
+
+        req.maxTravelTime
+            ? req.maxTravelTime + " min travel"
+            : null,
+
+        req.maxDeposit !== null && req.maxDeposit !== undefined
+            ? "Deposit up to " + formatINR(req.maxDeposit)
+            : null,
+
+        req.sharing
+            ? req.sharing + " sharing"
+            : null,
+
+        req.furnished && req.furnished !== "Any"
+            ? req.furnished
+            : null
+    ].filter(Boolean);
+
+    container.innerHTML = chips
+        .map(chip =>
+            '<span class="req-chip">' +
+            escapeHTML(chip) +
+            "</span>"
+        )
+        .join(" ");
+}
+
+function updateResultsHeader(req, count) {
+    const heading = getElement("area-heading");
+
+    if (heading && req && req.location) {
+        heading.textContent =
+            "Your matches near " + req.location;
+    }
+
+    const counter = getElement("result-count");
+
+    if (counter) {
+        counter.textContent = String(count);
+    }
+
+    const panel = getElement("req-panel");
+
+    if (panel && panel.tagName === "DETAILS") {
+        panel.open = false;
+    }
+}
+
+
+/* ============================================================
    38. SHORTLIST PAGE
    ============================================================ */
 
 function renderShortlistPage() {
     const container = getElement(
+        "shortlist-list",
         "shortlist-results",
         "shortlist-container"
     );
@@ -2838,18 +2935,23 @@ function renderShortlistPage() {
         .join("");
 }
 
-
 /* ============================================================
    39. COMPARE PAGE
    ============================================================ */
 
 function renderComparePage() {
     const container = getElement(
+        "compare-table",
         "compare-results",
         "compare-container"
     );
 
-    if (!container) return;
+    if (!container) {
+        console.error(
+            "Compare page container was not found."
+        );
+        return;
+    }
 
     const compareList = getCompareList();
 
@@ -2857,29 +2959,55 @@ function renderComparePage() {
         container.innerHTML = `
             <p>Add properties to compare them.</p>
         `;
-
         return;
     }
 
     const rows = [
         ["Rent", property => formatINR(property.rent)],
+
         ["Deposit", property => formatINR(property.deposit)],
+
         ["Bedrooms", property => property.bedrooms ?? "Unknown"],
+
         ["Bathrooms", property => property.bathrooms ?? "Unknown"],
+
         ["Furnishing", property => property.furnished || "Unknown"],
+
         ["Sharing", property => property.sharing ?? "Unknown"],
-        ["Distance", property => property.distanceKm !== null && property.distanceKm !== undefined
-            ? `${property.distanceKm} km`
-            : "Unknown"],
-        ["Travel time", property => property.travelTimeMin !== null && property.travelTimeMin !== undefined
-            ? `${property.travelTimeMin} min (estimated)`
-            : "Unknown"],
+
+        [
+            "Distance",
+            property =>
+                property.distanceKm !== null &&
+                property.distanceKm !== undefined
+                    ? `${property.distanceKm} km`
+                    : "Unknown"
+        ],
+
+        [
+            "Travel time",
+            property =>
+                property.travelTimeMin !== null &&
+                property.travelTimeMin !== undefined
+                    ? `${property.travelTimeMin} min (estimated)`
+                    : "Unknown"
+        ],
+
         ["Match score", property => formatPercent(property.matchScore)],
+
         ["Confidence", property => formatPercent(property.confidence)],
-        ["Recommendation", property => property.recommendationStatus || "Unknown"],
-        ["Eligibility", property => property.recommendationEligible
-            ? "Eligible"
-            : "Not eligible"]
+
+        [
+            "Recommendation",
+            property => property.recommendationStatus || "Unknown"
+        ],
+
+        [
+            "Eligibility",
+            property => property.recommendationEligible
+                ? "Eligible"
+                : "Not eligible"
+        ]
     ];
 
     container.innerHTML = `
@@ -2921,7 +3049,6 @@ function renderComparePage() {
     `;
 }
 
-
 /* ============================================================
    40. RESTORE SAVED FORM
    ============================================================ */
@@ -2943,7 +3070,8 @@ function restoreSavedForm() {
         "max-deposit": req.maxDeposit,
         sharing: req.sharing,
         furnished: req.furnished,
-        food: req.food
+        food: req.food,
+        foodPolicy: req.food
     };
 
     Object.entries(fields).forEach(([id, value]) => {
@@ -3035,7 +3163,16 @@ function setupLocationListeners() {
    ============================================================ */
 
 function initializeRentMatch() {
-    restoreSavedForm();
+    // Only the Home page has the requirements form. Other pages
+    // (Search, Compare, Shortlist) must not have their fields
+    // filled in or their forms taken over by this script.
+    const requirementsForm = getElement("requirements-form");
+
+    if (requirementsForm) {
+        restoreSavedForm();
+
+        renderRequirementsSummary(getSavedRequirements());
+    }
 
     setupLocationListeners();
 
@@ -3052,10 +3189,9 @@ function initializeRentMatch() {
         );
     }
 
-    const searchForm = getElement("search-form");
-
-    if (searchForm) {
-        searchForm.addEventListener(
+    // "Save requirements" submits this form.
+    if (requirementsForm) {
+        requirementsForm.addEventListener(
             "submit",
             searchLiveProperties
         );
@@ -3090,8 +3226,22 @@ function initializeRentMatch() {
     ) {
         renderComparePage();
 
-    } else if (savedResults.length > 0) {
+    } else if (
+        savedResults.length > 0 &&
+        getElement(
+            "property-list",
+            "property-results",
+            "results",
+            "properties-container"
+        )
+    ) {
         renderProperties(savedResults);
+
+        const counter = getElement("result-count");
+
+        if (counter) {
+            counter.textContent = String(savedResults.length);
+        }
     }
 }
 
