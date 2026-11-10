@@ -1,196 +1,228 @@
-# RentMatch AI
+# RentMatch AI – Smart Rental Matching for Students & Professionals
 
-RentMatch AI helps students and professionals find rental homes. It ranks properties by budget, distance, travel time, deposit, facilities, furnishing and sharing, and explains every match score.
+RentMatch AI is a smart rental property discovery and matching application designed to help students and working professionals find suitable rental homes.
 
-## Project structure
+It integrates live rental listings from 99acres through Scrappa and evaluates properties based on users' budgets, preferred locations, travel time, facilities, furnishing and sharing requirements.
 
-```
+## Key Features
+
+- Live rental property search using 99acres through Scrappa.
+- Location-based rental discovery.
+- Personalized rental matching with scores out of 100.
+- Budget and deposit comparison.
+- Distance and estimated travel-time calculations.
+- Facility and furnishing verification.
+- Side-by-side comparison of up to three properties.
+- Property shortlist and saved listings.
+- Match confidence and eligibility indicators.
+- Missing-information alerts.
+- REST API backend with SQLite database.
+- Automated unit testing.
+
+## Technologies Used
+
+**Frontend**
+- HTML5
+- CSS3
+- JavaScript
+
+**Backend**
+- Node.js
+- Express.js
+- SQLite
+- REST API
+
+**External Integration**
+- Scrappa API
+- 99acres rental listings
+- OpenStreetMap Nominatim for location lookup
+
+## Project Structure
+
+```text
 RentMatch-AI-main/
-├── index.html, search.html, compare.html, shortlist.html   Frontend pages
-├── style.css, script.js, search-page.js       Frontend styling and logic
+├── index.html
+├── search.html
+├── compare.html
+├── shortlist.html
+├── style.css
+├── script.js
+├── search-page.js
 └── backend/
-    ├── server.js          Express API (routes, validation, error handling)
-    ├── db.js              SQLite connection and table schema
-    ├── seed.js            Loads the 8 sample properties into the database
-    ├── matching.js        Scoring engine (pure functions, unit tested)
-    ├── matching.test.js   Unit tests for the scoring engine
-    ├── search.js          Search filters and sorting (pure functions, unit tested)
-    └── search.test.js     Unit tests for the search filters
+    ├── server.js
+    ├── db.js
+    ├── seed.js
+    ├── matching.js
+    ├── matching.test.js
+    ├── search.js
+    ├── search.test.js
+    └── package.json
 ```
 
-## Running the backend
+## Installation and Setup
 
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/nethrakalimuthu1510-ship-it/RentMatch-AI.git
+cd RentMatch-AI
 ```
+
+### 2. Install backend dependencies
+
+```bash
 cd backend
 npm install
-node seed.js        # creates and fills rentmatch.db
-node server.js      # starts the API on http://localhost:3001
 ```
 
-## API endpoints
+### 3. Configure environment variables
 
-Base URL: `http://localhost:3001`
+Create a `.env` file inside the backend folder.
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/health` | Checks that the server is running |
-| GET | `/api/properties` | Returns all properties |
-| GET | `/api/properties/:id` | Returns one property by id |
-| GET | `/api/search` | Filters properties using query parameters |
-| POST | `/api/match` | Scores and ranks all properties for the given requirements |
-
-### GET /api/health
-
-Response `200`:
-```json
-{ "status": "ok" }
+```env
+SCRAPPA_API_KEY=your_scrappa_api_key
 ```
 
-### GET /api/properties
+Never upload your actual API key to GitHub.
 
-Response `200`: an array of property objects.
-```json
-[
-  {
-    "id": "sunny-veda",
-    "name": "Sunny Veda Residency",
-    "area": "MG Road",
-    "distanceKm": 2.1,
-    "travelTimeMin": 15,
-    "rent": 8000,
-    "deposit": 20000,
-    "sharing": 2,
-    "furnished": "Furnished",
-    "facilities": ["Wi-Fi", "Washing machine", "Attached bathroom"],
-    "foodPolicy": "Any"
-  }
-]
+### 4. Initialize the database
+
+```bash
+node seed.js
 ```
 
-### GET /api/properties/:id
+### 5. Start the backend
 
-Response `200`: one property object (same shape as above).
-Response `404` if the id does not exist:
-```json
-{ "error": "Property not found" }
+```bash
+node server.js
 ```
 
-### GET /api/search
+The backend runs locally at:
 
-Filters the properties using query parameters. Every parameter is optional, and all the filters you give must match.
-
-| Parameter | Meaning |
-|-----------|---------|
-| maxRent | Maximum monthly rent in ₹ |
-| maxDeposit | Maximum deposit in ₹ |
-| sharing | Exact number of people sharing (1, 2 or 3) |
-| area | Text found in the area or the property name (not case sensitive) |
-| furnished | "Furnished", "Semi-furnished" or "Unfurnished" |
-| foodPolicy | "Any" or "Veg only" |
-| facilities | Comma-separated list; the property must have all of them |
-| sort | `rent_asc`, `rent_desc`, `deposit_asc` or `distance_asc` |
-
-Example request:
-```
-GET /api/search?maxRent=8000&facilities=Wi-Fi&sort=rent_asc
+```text
+http://localhost:3001
 ```
 
-Response `200`: an array of property objects (same shape as `GET /api/properties`), possibly empty.
+Open `index.html` using a local development server to access the frontend.
 
-Response `400` if a number is invalid or the sort order is unknown:
-```json
-{ "error": "Invalid search filters", "fields": ["maxRent"] }
+## API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/health` | Checks backend status |
+| GET | `/api/properties` | Retrieves stored properties |
+| GET | `/api/properties/:id` | Retrieves a property |
+| GET | `/api/search` | Filters stored properties |
+| POST | `/api/match` | Calculates personalized match scores |
+| GET | `/api/external/search` | External rental search |
+| GET | `/api/99acres/search` | Retrieves 99acres rental listings through Scrappa |
+
+### Live 99acres Search
+
+Example:
+
+```text
+GET /api/99acres/search?page=1
 ```
 
-### POST /api/match
+The endpoint retrieves rental listing information through Scrappa and returns property details, source information and pagination metadata.
 
-Request body (JSON):
+## Matching System
 
-| Field | Type | Required | Meaning |
-|-------|------|----------|---------|
-| budget | number | yes | Maximum monthly rent in ₹ |
-| maxDistance | number | yes | Maximum distance in km |
-| maxTravelTime | number | yes | Maximum travel time in minutes |
-| maxDeposit | number | yes | Maximum deposit in ₹ |
-| sharing | number | yes | Preferred number of people sharing |
-| furnished | string | no | "Furnished", "Semi-furnished" or "Unfurnished" |
-| facilities | string[] | no | Required facilities |
+Properties are evaluated using a weighted scoring system with a maximum score of 100.
 
-Example request:
-```json
-{
-  "budget": 8000, "maxDistance": 3, "maxTravelTime": 25,
-  "maxDeposit": 25000, "sharing": 2, "furnished": "Furnished",
-  "facilities": ["Wi-Fi", "Washing machine", "Attached bathroom"]
-}
-```
+| Matching criterion | Weight |
+|---|---:|
+| Budget | 25 |
+| Distance | 20 |
+| Travel time | 15 |
+| Deposit | 15 |
+| Facilities | 15 |
+| Furnishing | 5 |
+| Sharing | 5 |
+| **Total** | **100** |
 
-Response `200`: an array sorted by score, best match first. Each item has the property, a score from 0 to 100, and a breakdown explaining each criterion.
-```json
-[
-  {
-    "property": { "id": "sunny-veda", "name": "Sunny Veda Residency" },
-    "score": 100,
-    "breakdown": [
-      { "label": "Budget", "status": "pass", "text": "₹8000 vs your ₹8000 budget" }
-    ],
-    "distanceKm": 2.1,
-    "travelTimeMin": 15
-  }
-]
-```
+The application also displays match confidence, eligibility, missing information and individual criterion breakdowns.
 
-Response `400` if a required field is missing or is not a positive number:
-```json
-{ "error": "Missing or invalid fields", "fields": ["budget"] }
-```
+## Property Comparison
 
-## Database schema
+Users can compare up to three properties side by side.
 
-SQLite database `backend/rentmatch.db`, one table:
+Comparison details include:
+- Monthly rent
+- Deposit
+- Bedrooms and bathrooms
+- Furnishing
+- Sharing
+- Distance
+- Estimated travel time
+- Match score
+- Confidence
+- Eligibility and recommendation
 
-**properties**
+## Shortlist
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | TEXT | Primary key, e.g. "sunny-veda" |
-| name | TEXT | Required |
-| area | TEXT | Required |
-| landmark | TEXT | Reference point for distance |
-| lat, lng | REAL | Required coordinates |
-| distance_km | REAL | Stored distance to the landmark |
-| travel_time_min | INTEGER | Stored travel time |
-| rent | INTEGER | Required, ₹ per month |
-| deposit | INTEGER | Required, ₹ |
-| sharing | INTEGER | Required, people per room |
-| furnished | TEXT | Required |
-| facilities | TEXT | Comma-separated, e.g. "Wi-Fi,Washing machine" |
-| food_policy | TEXT | "Any" or "Veg only" |
-| owner, contact | TEXT | Owner details |
-| available_from | TEXT | Date as YYYY-MM-DD |
-| note | TEXT | Warnings such as missing listing information |
+Users can save rental properties for future reference, remove saved properties and access original listings.
 
-## Search page
+Saved shortlist information is maintained using browser storage.
 
-`search.html` and `search-page.js` let users filter the listings directly. The page builds a query from the form and calls `GET /api/search`. It shows a clear message when the filters are invalid or when the server is not running.
+## Location and Distance
 
-## Matching score
+The application supports location lookup and location-based matching.
 
-Each property is scored out of 100: Budget 25, Distance 20, Travel time 15, Deposit 15, Facilities 15, Furnishing 5, Sharing 5. Budget, distance, travel time and deposit give partial marks when a property is slightly over the limit, and 0 when far over.
+It uses geographic coordinates and the Haversine formula to calculate straight-line distances when suitable coordinates are available.
+
+Estimated travel time is displayed separately from straight-line distance.
+
+## Database
+
+The backend uses SQLite for structured property storage.
+
+The database contains property information such as:
+- Property name
+- Area and location
+- Coordinates
+- Monthly rent
+- Deposit
+- Bedrooms and bathrooms
+- Sharing
+- Furnishing
+- Facilities
+- Availability information
 
 ## Testing
 
-Unit tests use Node's built-in test runner:
+The project uses Node.js's built-in test runner.
 
-```
+Run:
+
+```bash
 cd backend
-node --test
+npm test
 ```
 
-There are 19 tests. The 10 tests in `matching.test.js` cover a perfect match, partial and failed budget scores, partial facility matches, exact-coordinate distance, the exact-distance flag, a score that never goes below 0, the Haversine distance formula, and the minimum travel time. The 9 tests in `search.test.js` cover each filter, combined filters, sorting without changing the input, and parsing and validating the query values.
+Latest verified test result:
 
-## Error handling
+```text
+Tests: 19
+Pass: 19
+Fail: 0
+```
 
-- **Input validation:** `POST /api/match` and `GET /api/search` return `400` with the list of invalid fields instead of crashing.
-- **Not found:** an unknown property id or an unknown route returns a JSON `404`.
-- **Error boundary:** every route passes unexpected errors to one central error handler in `server.js`. It logs the real error on the server and returns a generic `500` response, so internal details are never exposed to the client.
+The automated tests cover matching calculations, budget evaluation, facilities, distance calculations, travel-time estimation, property filtering, sorting and search validation.
+
+## Error Handling
+
+The backend includes:
+- Request validation.
+- Invalid input responses.
+- Property not-found responses.
+- Centralized error handling.
+- External API error handling.
+- API response caching.
+
+## Project Objective
+
+The objective of RentMatch AI is to simplify rental property discovery by combining rental listing information with personalized matching, location evaluation and transparent recommendations.
+
+The application helps students and professionals make more informed rental decisions.
