@@ -1,11 +1,27 @@
 const { DatabaseSync } = require("node:sqlite");
 const path = require("path");
+const fs = require("fs");
+const os = require("os");
 
-// The database is a single file stored next to this script
-const db = new DatabaseSync(path.join(__dirname, "rentmatch.db"));
+// Original database bundled with the project
+const sourcePath = path.join(__dirname, "rentmatch.db");
 
-// Schema: one row per rental property.
-// facilities is stored as comma-separated text, e.g. "Wi-Fi,Washing machine"
+// Writable temporary database location on Vercel
+const dbPath = path.join(os.tmpdir(), "rentmatch.db");
+
+// Copy the original database to /tmp if it does not already exist
+if (!fs.existsSync(dbPath)) {
+    if (!fs.existsSync(sourcePath)) {
+        throw new Error("rentmatch.db not found in backend folder");
+    }
+
+    fs.copyFileSync(sourcePath, dbPath);
+}
+
+// Open the writable database
+const db = new DatabaseSync(dbPath);
+
+// Ensure the properties table exists
 db.exec(`
   CREATE TABLE IF NOT EXISTS properties (
     id               TEXT PRIMARY KEY,
