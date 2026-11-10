@@ -6,8 +6,9 @@
    Intelligent matching with verified information.
    ============================================================ */
 
-const API_URL = "http://localhost:3001";
-
+const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:3001"
+    : "https://rentmatch-ai.onrender.com";
 const STORAGE_KEYS = {
     requirements: "rentmatch_requirements",
     liveResults: "rentmatch_live_results",
