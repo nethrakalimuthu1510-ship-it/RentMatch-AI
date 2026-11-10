@@ -5,10 +5,10 @@
 
    Intelligent matching with verified information.
    ============================================================ */
-
 const API_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:3001"
-    : "https://rentmatch-ai.onrender.com";
+    : "https://rent-match-ai-seven.vercel.app";
+
 const STORAGE_KEYS = {
     requirements: "rentmatch_requirements",
     liveResults: "rentmatch_live_results",
